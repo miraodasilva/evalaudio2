@@ -15,8 +15,8 @@ sr = 16000
 print("Loading args & data & model...")
 # load args
 parser = argparse.ArgumentParser()
-parser.add_argument("--real_folder", "-rf", help="Path to real audio folder")
-parser.add_argument("--fake_folder", "-ff", help="Path to fake audio folder")
+parser.add_argument("--real-folder", "-rf", help="Path to real audio folder")
+parser.add_argument("--fake-folder", "-ff", help="Path to fake audio folder")
 parser.add_argument("--dataset", "-ds", help="Name of dataset, to pick WER model")
 
 args = parser.parse_args()
@@ -63,9 +63,8 @@ for root, _, files in os.walk(args.fake_folder):
                 resample = torchaudio.transforms.Resample(audio_fake_sr, 16_000)
                 audio_fake = resample(audio_fake)
         audio_real_path = audio_fake_path.replace(args.fake_folder, args.real_folder)
-        # if args.dataset == "lrw":
-        #    li = audio_real_path.rsplit("test/", 1)
-        #    audio_real_path = "".join(li)
+        if args.fake_folder == "/vol/paramonos2/projects/rodrigo/feats/v2ajournal_samples/lrwfull":
+            audio_real_path = "/".join(audio_real_path.split("/")[:-1]+ ["test",audio_real_path.split("/")[-1]])
         if os.path.exists(audio_real_path.replace(".wav", ".npz")):
             audio_real_path = audio_real_path.replace(".wav", ".npz")
         elif os.path.exists(audio_real_path.replace(".npz", ".wav")):
@@ -92,7 +91,7 @@ for root, _, files in os.walk(args.fake_folder):
             diff = abs(audio_real.size(-1) - audio_fake.size(-1))
             # Tolerance of 1000 samples
             print("Cut, real was {} fake was {}!".format(audio_real.size(-1), audio_fake.size(-1)))
-            assert diff < 10000
+            #assert diff < 10000
             min_len = min(audio_real.size(-1), audio_fake.size(-1))
             audio_real = audio_real[:, :min_len]
             audio_fake = audio_fake[:, :min_len]
@@ -121,7 +120,6 @@ for root, _, files in os.walk(args.fake_folder):
             pass
         stoi += [eval_metrics.calculate_stoi(audio_real_np, audio_fake_np, sr)]
         estoi += [eval_metrics.calculate_estoi(audio_real_np, audio_fake_np, sr)]
-        print(stoi)
 
 pypesq = np.mean(np.array(pypesq))
 pesq_nb = np.mean(np.array(pesq_nb))
