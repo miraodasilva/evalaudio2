@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch
 from speechbrain.pretrained import EncoderDecoderASR
+import time
 
 
 # local
@@ -57,9 +58,13 @@ class WER_Model(nn.Module):
         super(WER_Model, self).__init__()
         self.dataset = dataset
         if "grid" in dataset:
-            self.model = LipreadingPipeline("./WER/Visual_Speech_Recognition_for_Multiple_Languages/configs/GRID_A_WER0.1.ini")
+            self.model = LipreadingPipeline(
+                "./WER/Visual_Speech_Recognition_for_Multiple_Languages/configs/GRID_A_WER0.1.ini"
+            )
         elif "lrs3" in dataset:
-            self.model = LipreadingPipeline("./WER/Visual_Speech_Recognition_for_Multiple_Languages/configs/LRS3_A_WER2.3.ini")
+            self.model = LipreadingPipeline(
+                "./WER/Visual_Speech_Recognition_for_Multiple_Languages/configs/LRS3_A_WER2.3.ini", device="cuda:0"
+            )
         elif "timit" in dataset:
             self.model = EncoderDecoderASR.from_hparams(
                 source="speechbrain/asr-transformer-transformerlm-librispeech",
@@ -68,7 +73,7 @@ class WER_Model(nn.Module):
         else:
             raise ValueError
 
-    def forward(self,audio_real_path, audio_fake_path):
+    def forward(self, audio_real_path, audio_fake_path):
         if "grid" in self.dataset or "lrs3" in self.dataset:
             preds_real = self.model(audio_real_path, "")
             preds_fake = self.model(audio_fake_path, "")
@@ -78,6 +83,19 @@ class WER_Model(nn.Module):
         print(preds_real)
         print(preds_fake)
         return measures.WER(preds_real.lower(), preds_fake.lower())
+
+    def transcribe_batch(self, audio_real, audio_fake, lengths):
+        if "grid" in self.dataset or "lrs3" in self.dataset:
+            lengths = [l / max(lengths) for l in lengths]
+            preds_real, _ = self.model(audio_real, lengths)
+            preds_fake, _ = self.model(audio_fake, lengths)
+            wer = []
+            for i in range(len(preds_real)):
+                wer += [measures.WER(preds_real[i].lower(), preds_fake[i].lower())]
+            return wer
+        else:
+            raise NotImplementedError
+
 
 class LRW_WER_Model(nn.Module):
     def __init__(self):
@@ -91,6 +109,7 @@ class LRW_WER_Model(nn.Module):
         )
         checkpoint = torch.load("./WER/LRW/model_best.pth.tar")
         self.model.load_state_dict(checkpoint["state_dict"])
+
     def forward(self, audio_real, audio_fake, audio_lengths):
         batch_size = audio_fake.size(0)
         # real
