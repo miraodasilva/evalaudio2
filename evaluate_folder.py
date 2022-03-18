@@ -99,8 +99,10 @@ for root, _, files in os.walk(args.fake_folder):
         # metrics
         if "lrw" in args.dataset:
             wer += [wer_model(audio_real.view(1, 1, -1), audio_fake.view(1, 1, -1), [audio_fake.size(-1)])]
-        else:
+        elif "grid" in args.dataset:
             wer += [wer_model(audio_real_path, audio_fake_path)]
+        else:
+            wer = -1
         audio_fake_np = audio_fake.detach().squeeze().cpu().numpy()
         audio_real_np = audio_real.detach().squeeze().cpu().numpy()
         try:
