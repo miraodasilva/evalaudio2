@@ -2,6 +2,7 @@ import argparse
 import os
 import torch
 import torchaudio
+import torchvision
 import numpy as np
 from tqdm import tqdm
 
@@ -63,12 +64,14 @@ for root, _, files in os.walk(args.fake_folder):
                 resample = torchaudio.transforms.Resample(audio_fake_sr, 16_000)
                 audio_fake = resample(audio_fake)
         audio_real_path = audio_fake_path.replace(args.fake_folder, args.real_folder)
-        if args.fake_folder == "/vol/paramonos2/projects/rodrigo/feats/v2ajournal_samples/lrwfull":
+        if args.fake_folder == "/vol/paramonos2/projects/rodrigo/feats/v2ajournal_samples/lrwfull" or args.real_folder == "/vol/paramonos/projects/Stavros/lipread_mp4":
             audio_real_path = "/".join(audio_real_path.split("/")[:-1]+ ["test",audio_real_path.split("/")[-1]])
         if os.path.exists(audio_real_path.replace(".wav", ".npz")):
             audio_real_path = audio_real_path.replace(".wav", ".npz")
         elif os.path.exists(audio_real_path.replace(".npz", ".wav")):
             audio_real_path = audio_real_path.replace(".npz", ".wav")
+        elif os.path.exists(audio_real_path.replace(".wav", ".mp4")):
+            audio_real_path = audio_real_path.replace(".wav", ".mp4")
         else:
             print(audio_real_path)
             mismatches += 1
@@ -76,6 +79,12 @@ for root, _, files in os.walk(args.fake_folder):
             continue
         if audio_real_path.endswith(".npz"):
             audio_real = torch.from_numpy(np.load(audio_real_path)["data"]).view(1, -1)
+        elif audio_real_path.endswith(".mp4"):
+            _,audio_real,info = torchvision.io.read_video(audio_real_path)
+            if info["audio_fps"] != 16_000:
+                print("#####Resampling real audio!#####")
+                resample = torchaudio.transforms.Resample(audio_real_sr, 16_000)
+                audio_real = resample(audio_real)
         else:
             audio_real, audio_real_sr = torchaudio.load(audio_real_path, normalize=True)
             audio_real = audio_real.view(1, -1)
